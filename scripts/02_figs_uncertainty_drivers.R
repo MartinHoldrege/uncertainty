@@ -22,9 +22,12 @@ theme_set(theme_custom1())
 cols_rcp <- c('RCP45' = '#3288bd', 'RCP85' = '#d53e4f')
 
 
+# read in data ------------------------------------------------------------
 
+rr1 <- read_csv('data_processed/newRR_metrics_mean_1980-2099.csv',
+                show_col_types = FALSE)
 
-# fig functions -----------------------------------------------------------
+# fig functions/params -----------------------------------------------------------
 
 fill_color_rcp = function() {
   list(scale_color_manual(values = cols_rcp),
@@ -36,6 +39,30 @@ jpeg2 = function(filename, ...) {
   jpeg(filename, width = 3, height = 3, units = 'in',
        res = 600, bg = 'transparent')
 }
+
+alpha_ribbon <- 0.2
+xlim1 <- c(1980, 2090)
+
+base1 <- function() {
+  list(
+    fill_color_rcp(),
+    labs(x = 'Year'),
+    theme(legend.position = 'none')
+    )
+}
+
+create_time_series <- function(obs, proj1, proj2, y, y_med, y_low, y_high) {
+  ggplot(mapping = aes(x = year)) +
+    geom_vline(xintercept = max(obs$year), color = 'gray') +
+    geom_line(data = obs, aes(y = .data[[y]])) +
+    geom_point(data = obs, aes(y = .data[[y]])) +
+    geom_ribbon(data = proj2, aes(ymin = .data[[y_low]], 
+                                  ymax = .data[[y_high]], fill = RCP),
+                alpha = alpha_ribbon) +
+    geom_point(data = proj1, aes(y = .data[[y_med]], color = RCP)) +
+    geom_line(data = proj2, aes(y = .data[[y_med]], color = RCP)) +
+    base1()
+} 
 
 # fig 4 -------------------------------------------------------------------
 
@@ -86,27 +113,54 @@ csa_proj2 <- bind_rows(row, row) %>%
 
 # * figure ----------------------------------------------------------------
 
-g <- ggplot(mapping = aes(x = year)) +
-  geom_vline(xintercept = max(csa_obs$year), color = 'gray') +
-  geom_line(data = csa_obs, aes(y = area)) +
-  geom_point(data = csa_obs, aes(y = area)) +
-  geom_ribbon(data = csa_proj2, aes(ymin = area_low, 
-                                    ymax = area_hi, fill = RCP),
-              alpha = 0.2) +
-  geom_point(data = csa_proj1, aes(y = area_med, color = RCP)) +
-  geom_line(data = csa_proj2, aes(y = area_med, color = RCP)) +
-
-  coord_cartesian(ylim = c(0, max(csa_obs$area))) +
-  labs(x = 'Year',
-       y = 'Core Sagebrush Area (millions ha)') +
-  theme(legend.position = 'none') +
-  fill_color_rcp()
+g <- create_time_series(obs = csa_obs, proj1 = csa_proj1, proj2 = csa_proj2, 
+                   y = 'area', y_med = 'area_med', y_low = 'area_low', 
+                   y_high = 'area_hi')
+g2 <- g+
+  coord_cartesian(ylim = c(0, max(csa_obs$area)),
+                  xlim = xlim1) +
+  labs(y = 'Core Sagebrush Area (millions ha)') 
 
 jpeg2('figures/fig4_ecological-uncertainty_v1.jpg')
-g
+g2
 dev.off()
 
+# fig 2 -------------------------------------------------------------------
+
+# Uncertainty in climate response
+rr_obs <- rr1 %>% 
+  filter(RCP == 'Historical')
+
+rr_proj2 <- rr1 %>% 
+  filter(RCP != 'Historical') 
+
+rr_proj1 <- rr1 %>% 
+  filter(RCP != 'Historical', is.na(comment)) 
+  
 
 
+g <- create_time_series(obs = rr_obs, proj1 = rr_proj1, proj2 = rr_proj2, 
+                        y = 'Tmean', y_med = 'Tmean_med', y_low = 'Tmean_low', 
+                        y_high = 'Tmean_high')
+g2 <- g+
+  coord_cartesian(xlim = xlim1) +
+  labs(y = 'Mean Temperature') 
 
+jpeg2('figures/fig2_climate-uncertainty_v1.jpg')
+g2
+dev.off()
 
+# fig 3 -------------------------------------------------------------------
+
+# Uncertainty ecological response
+
+g <- create_time_series(obs = rr_obs, proj1 = rr_proj1, proj2 = rr_proj2, 
+                        y = 'DDD', y_med = 'DDD_med', y_low = 'DDD_low', 
+                        y_high = 'DDD_high')
+g2 <- g+
+  coord_cartesian(xlim = xlim1) +
+  labs(y = 'Dry Degree Days') 
+g2
+jpeg2('figures/fig3_ecological-driver_v1.jpg')
+g2
+dev.off()

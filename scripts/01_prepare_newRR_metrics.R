@@ -42,9 +42,9 @@ fut_l1 <- map(paths_fut, function(x) {
 
 # functions ---------------------------------------------------------------
 
-calc_wmean <- function(df) {
+calc_wmean <- function(df, xvar, wvar = 'count_rangelands') {
   df <- drop_na(df)
-  weighted.mean(x = df$value, w = df$count_rangelands)
+  weighted.mean(x = df[[xvar]], w = df[[wvar]])
 }
 
 # calculated the weighted mean for each year
@@ -59,7 +59,7 @@ calc_annual_means <- function(df, var_name) {
     mutate(year = as.numeric(str_extract(year, '\\d{4}$'))) %>% 
     group_by(year) %>% 
     nest() %>% 
-    mutate(mean = map_dbl(data, calc_wmean)) %>% 
+    mutate(mean = map_dbl(data, calc_wmean, xvar = 'value', wvar = 'count_rangelands')) %>% 
     select(-data) %>% 
     ungroup()
   
@@ -74,27 +74,76 @@ calc_annual_means <- function(df, var_name) {
 # of pixels that row of data extrapolated too))
 
 ambient1 <- map2(ambient_l1, names(ambient_l1), calc_annual_means) %>% 
-  reduce(left_join, by = 'year')
+  reduce(left_join, by = 'year') %>% 
+  mutate(RCP = 'Historical')
 
 
 # summarize projected delta values ----------------------------------------------
 
 fut_delta1 <- bind_rows(fut_l1, .id = 'file') %>% 
   mutate(RCP = str_extract(file, 'RCP\\d{2}'),
-         years = str_extract(file, '\\d{4}\\-\\d{4}')) %>% 
-  rename(Tmean = Tmean_mean_delta_acrmoddistr,
-         DDD = DDD_mean_delta_acrmoddistr) %>% 
+         years = str_extract(file, '\\d{4}\\-\\d{4}'),
+         summary = str_extract(file, 'low|high|med')) %>% 
+  rename(Tmean_delta = Tmean_mean_delta_acrmoddistr,
+         DDD_delta = DDD_mean_delta_acrmoddistr) %>% 
   select(-file)
 
+fut_delta2 <- fut_delta1 %>% 
+  group_by(RCP, years, summary) %>% 
+  nest() %>% 
+  summarize(Tmean_delta = map_dbl(data, calc_wmean, xvar = 'Tmean_delta'),
+            DDD_delta = map_dbl(data, calc_wmean, xvar = 'DDD_delta'),
+            .groups = 'drop') 
 
-# calculte future values -------------------------------------------------
+# calculate future values -------------------------------------------------
+
+ambient_avg <- ambient1 %>% 
+  filter(year >= 1980 & year <=2010) %>% 
+  summarize(DDD_mean = mean(DDD),
+            Tmean_mean = mean(Tmean))
+
+fut1 <- fut_delta2
+
+# calculating the future value has the ambient normal + the delta
+fut1$DDD <- fut1$DDD_delta + ambient_avg$DDD_mean
+fut1$Tmean <- fut1$Tmean_delta + ambient_avg$Tmean_mean
+
+fut2 <- fut1 %>% 
+  select(-matches('delta')) %>% 
+  mutate(year = case_when(
+    # replace with mid point of period
+    str_detect(years, '2099') ~ 2081,
+    str_detect(years, '2064') ~ 2046
+  )) %>% 
+  pivot_wider(values_from = c('DDD', 'Tmean'),
+              names_from = 'summary') 
+
+# adding dummy rows so that time-series can show
+# cone of uncertainty starting from the current value
+row <- ambient1 %>% 
+  filter(year == max(year)) %>% 
+  mutate(DDD_med = DDD,
+         DDD_high = DDD,
+         DDD_low = DDD,
+         Tmean_med = Tmean,
+         Tmean_high = Tmean,
+         Tmean_low = Tmean,
+         comment = 'dummy row') %>% 
+  select(-Tmean, -DDD)
+
+rows <- bind_rows(row, row)
+rows$RCP <- unique(fut2$RCP)
+
+fut3 <- fut2 %>% 
+  bind_rows(rows)
+
+# combine outputs ---------------------------------------------------------
+
+comb1 <- bind_rows(fut3, ambient1)
 
 
+# write files -------------------------------------------------------------
 
-
-
-
-
-
+write_csv(comb1, 'data_processed/newRR_metrics_mean_1980-2099.csv')
 
          
