@@ -11,11 +11,11 @@
 # dependencies ------------------------------------------------------------
 
 library(tidyverse)
-
+source('src/general_functions.R')
 
 # params ------------------------------------------------------------------
 
-path1 <- "D:/USGS/large_files/2025_SRM/data_raw/newRR3/"
+path1 <- "D:/USGS/large_files/uncertainty/data_raw/newRR3/"
 
 
 # read in files ------------------------------------------------------------
@@ -110,36 +110,17 @@ fut1$Tmean <- fut1$Tmean_delta + ambient_avg$Tmean_mean
 
 fut2 <- fut1 %>% 
   select(-matches('delta')) %>% 
-  mutate(year = case_when(
-    # replace with mid point of period
-    str_detect(years, '2099') ~ 2081,
-    str_detect(years, '2064') ~ 2046
-  )) %>% 
+  mutate(year = epoch2year(years)) %>% 
   pivot_wider(values_from = c('DDD', 'Tmean'),
-              names_from = 'summary') 
+              names_from = 'summary') %>% 
+  rename_with(.fn = function(x) {
+    str_replace(x, 'high', 'hi')
+  })
 
-# adding dummy rows so that time-series can show
-# cone of uncertainty starting from the current value
-row <- ambient1 %>% 
-  filter(year == max(year)) %>% 
-  mutate(DDD_med = DDD,
-         DDD_high = DDD,
-         DDD_low = DDD,
-         Tmean_med = Tmean,
-         Tmean_high = Tmean,
-         Tmean_low = Tmean,
-         comment = 'dummy row') %>% 
-  select(-Tmean, -DDD)
-
-rows <- bind_rows(row, row)
-rows$RCP <- unique(fut2$RCP)
-
-fut3 <- fut2 %>% 
-  bind_rows(rows)
 
 # combine outputs ---------------------------------------------------------
 
-comb1 <- bind_rows(fut3, ambient1)
+comb1 <- bind_rows(fut2, ambient1)
 
 
 # write files -------------------------------------------------------------
