@@ -11,11 +11,11 @@
 # dependencies ------------------------------------------------------------
 
 library(tidyverse)
-source('src/figure_functions.R')
+source('src/fig_functions.R')
 theme_set(theme_custom1())
 
-
 # params --------------------------------------------------------------
+
 v <- 'v1' # append to figure file names
 
 # read in data ------------------------------------------------------------
@@ -28,7 +28,7 @@ scd1 <- read_csv('data_processed/SEI_area-by-class_2001-2100.csv')
 # fig functions/params -----------------------------------------------------------
 
 png2 = function(filename, ...) {
-  png(filename, width = 3, height = 3, units = 'in',
+  png(filename, width = 3.5, height = 3, units = 'in',
        res = 600, bg = 'transparent')
 }
 
@@ -39,8 +39,24 @@ xlim1 <- c(1980, 2090)
 # Uncertainty in ecological response
 # show area of core sagebrush (or other class) and then projected
 # for mid and end of century, for with and without fire
+scd2 <- scd1 %>% 
+  mutate(across(matches('area'), .fns = \(x) x/1e6)) # convert to millions ha
+SEIv11_area_mha = c(53.8, 45.0, 49.0, 42.2, 33.4)*0.404686 # from theobald et al 2022 #area of core
 
-# * data ------------------------------------------------------------------
+SEIv30_area_mha <- scd2 %>% 
+  filter(RCP == 'Historical',
+         class == 'CSA', 
+         year %in% (c(1, 6, 11, 16, 20) + 2000)) %>% 
+  arrange(year) %>% 
+  pull(area)
+
+# the problem is that v30 and v11 areas are notably inconsistent from
+# each other
+plot(SEIv11_area_mha, SEIv30_area_mha, 
+     xlab = 'CSA area (as per Doherty et al. 2022) (million ha)',
+     ylab = 'CSA area (as per SEI v30) (million ha)')
+abline(0, 1)
+
 
 units <- '(million ha)'
 lookup_ylab <- c('CSA' = paste('Core Sagebrush Area', units),
@@ -53,8 +69,7 @@ runs <- c("fire1_eind1_c4grass1_co20_2311", "fire0_eind1_c4grass1_co20")
 
 p <- expand_grid(run = runs,
                  class = classes)
-scd2 <- scd1 %>% 
-  mutate(across(matches('area'), .fns = \(x) x/10e6)) # convert to millions ha
+
 
 for(i in 1:nrow(p)) {
   class <- p$class[i]
@@ -75,51 +90,45 @@ for(i in 1:nrow(p)) {
     coord_cartesian(xlim = xlim1) +
     expand_limits(y = 0) +
     labs(y = lookup_ylab[class]) 
-  
-  png2(paste0('figures/timeseries/scd/', class, '_area_', run, '_', v, '.png'))
   g2
-  dev.off()
+  
+  # png2(paste0('figures/timeseries/scd/', class, '_area_', run, '_', v, '.png'))
+  # g2
+  # dev.off()
   
 }
 
-
-
-# fig 2 -------------------------------------------------------------------
+# climate figures -----------------------------------------------------------
 
 # Uncertainty in climate response
 rr_obs <- rr1 %>% 
   filter(RCP == 'Historical')
 
-rr_proj2 <- rr1 %>% 
-  filter(RCP != 'Historical') 
-
 rr_proj1 <- rr1 %>% 
-  filter(RCP != 'Historical', is.na(comment)) 
+  filter(RCP != 'Historical') 
   
-
-
-g <- create_time_series(obs = rr_obs, proj1 = rr_proj1, proj2 = rr_proj2, 
+g <- create_timeseries_fig2(obs = rr_obs, proj = rr_proj1,
                         y = 'Tmean', y_med = 'Tmean_med', y_low = 'Tmean_low', 
-                        y_high = 'Tmean_high')
+                        y_hi = 'Tmean_hi')
 g2 <- g+
   coord_cartesian(xlim = xlim1) +
   labs(y = 'Mean Temperature') 
 
-jpeg2('figures/fig2_climate-uncertainty_v1.jpg')
+png2(paste0('figures/timeseries/climate/tmean_', v, '.png'))
 g2
 dev.off()
 
-# fig 3 -------------------------------------------------------------------
+# driver figures ----------------------------------------------------------
 
-# Uncertainty ecological response
+# uncertainty in ecological driver
 
-g <- create_time_series(obs = rr_obs, proj1 = rr_proj1, proj2 = rr_proj2, 
-                        y = 'DDD', y_med = 'DDD_med', y_low = 'DDD_low', 
-                        y_high = 'DDD_high')
+g <- create_timeseries_fig2(obs = rr_obs, proj = rr_proj1,
+                            y = 'DDD', y_med = 'DDD_med', y_low = 'DDD_low', 
+                            y_hi = 'DDD_hi')
 g2 <- g+
   coord_cartesian(xlim = xlim1) +
   labs(y = 'Dry Degree Days') 
-g2
-jpeg2('figures/fig3_ecological-driver_v1.jpg')
+
+png2(paste0('figures/timeseries/driver/DDD_', v, '.png'))
 g2
 dev.off()
