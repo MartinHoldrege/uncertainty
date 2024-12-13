@@ -17,6 +17,7 @@ theme_set(theme_custom1())
 # params --------------------------------------------------------------
 
 v <- 'v1' # append to figure file names
+scd_version <- 'v1' # v1 or v3 (v1 = Doherty et al. 2022)
 
 # read in data ------------------------------------------------------------
 
@@ -40,22 +41,9 @@ xlim1 <- c(1980, 2090)
 # show area of core sagebrush (or other class) and then projected
 # for mid and end of century, for with and without fire
 scd2 <- scd1 %>% 
+  filter(RCP != 'Historical' | scd_version == !!scd_version) %>% 
   mutate(across(matches('area'), .fns = \(x) x/1e6)) # convert to millions ha
-SEIv11_area_mha = c(53.8, 45.0, 49.0, 42.2, 33.4)*0.404686 # from theobald et al 2022 #area of core
 
-SEIv30_area_mha <- scd2 %>% 
-  filter(RCP == 'Historical',
-         class == 'CSA', 
-         year %in% (c(1, 6, 11, 16, 20) + 2000)) %>% 
-  arrange(year) %>% 
-  pull(area)
-
-# the problem is that v30 and v11 areas are notably inconsistent from
-# each other
-plot(SEIv11_area_mha, SEIv30_area_mha, 
-     xlab = 'CSA area (as per Doherty et al. 2022) (million ha)',
-     ylab = 'CSA area (as per SEI v30) (million ha)')
-abline(0, 1)
 
 
 units <- '(million ha)'
@@ -65,7 +53,8 @@ lookup_ylab <- c('CSA' = paste('Core Sagebrush Area', units),
 
 classes <- names(lookup_ylab)
 
-runs <- c("fire1_eind1_c4grass1_co20_2311", "fire0_eind1_c4grass1_co20")
+runs <- c("fire1_eind1_c4grass1_co20_2311", "fire0_eind1_c4grass1_co20",
+          "fire1_eind1_c4grass0_co20_2311")
 
 p <- expand_grid(run = runs,
                  class = classes)
@@ -82,19 +71,31 @@ for(i in 1:nrow(p)) {
            class == !!class,
            run == !!run)
   
+  # keeping limits the same for different runs, for comparability
+  ylims <- scd2 %>% 
+    filter(class == !!class,
+           run %in% runs) %>% 
+    select(matches('area')) %>% 
+    pivot_longer(everything()) %>% 
+    pull('value') %>% 
+    range(na.rm = TRUE)
+  
   g <- create_timeseries_fig2(obs = obs, proj = proj,
                               y = 'area', y_med = 'area_med', y_low = 'area_lo', 
-                              y_hi = 'area_hi')
+                              y_hi = 'area_hi',
+                              # don't add best fit line
+                              model = FALSE)
   
   g2 <- g+
     coord_cartesian(xlim = xlim1) +
-    expand_limits(y = 0) +
+    expand_limits(y = ylims) +
     labs(y = lookup_ylab[class]) 
   g2
   
-  # png2(paste0('figures/timeseries/scd/', class, '_area_', run, '_', v, '.png'))
-  # g2
-  # dev.off()
+  png2(paste0('figures/timeseries/scd/', class, '_area_SEI', scd_version
+              ,'_', run, '_', v, '.png'))
+  print(g2)
+  dev.off()
   
 }
 

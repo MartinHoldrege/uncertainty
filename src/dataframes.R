@@ -16,19 +16,27 @@
 #' @return the proj dataframe but with additional dummy rows (for plotting)
 #' added. These provide values at the final year in the observed
 #' data, at the level predicted by a linear model through the observed data
-create_timeseries_df <- function(proj, obs, y, y_med, y_low, y_hi) {
+create_timeseries_df <- function(proj, obs, y, y_med, y_low, y_hi,
+                                 model = TRUE) {
   
   stopifnot(
     c('year', y) %in% names(obs),
     c('year', y_med, y_low, y_hi, 'RCP') %in% names(proj)
   )
   
-  form <- as.formula(paste0(y, ' ~ year'))
-  m <- lm(form, data = obs);
-  
   newdata <- obs[obs$year == max(obs$year), ]
+  if (model) {
+    form <- as.formula(paste0(y, ' ~ year'))
+    m <- lm(form, data = obs);
+    yhat <- predict(m, newdata = newdata)
+  } else {
+    # just use the last observation as the 'starting' point
+    # the projected values (instead of the linear prediction)
+    yhat <- newdata[[y]]
+  }
+
   # prediction for the last year in the observed timeseries
-  yhat <- predict(m, newdata = newdata)
+  
   stopifnot(length(yhat) == 1)
   
   rows <- distinct(proj[c('RCP')])

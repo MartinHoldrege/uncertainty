@@ -36,13 +36,20 @@ base_timeseries <- function() {
   )
 }
 
-create_timeseries_fig <- function(obs, proj1, proj2, y, y_med, y_low, y_hi) {
-  ggplot(mapping = aes(x = year)) +
+create_timeseries_fig <- function(obs, proj1, proj2, y, y_med, y_low, y_hi,
+                                  model = TRUE) {
+  
+  g1 <-  ggplot(mapping = aes(x = year)) +
     geom_vline(xintercept = max(obs$year), color = 'gray') +
-    geom_line(data = obs, aes(y = .data[[y]])) +
-    geom_smooth(data = obs, aes(y = .data[[y]]), se = FALSE,
-              color = 'gray', linetype = 2, method = 'lm',
-              formula = 'y~x') +
+    geom_line(data = obs, aes(y = .data[[y]]))
+  
+  if(model ) {
+    g1 <- g1 + geom_smooth(data = obs, aes(y = .data[[y]]), se = FALSE,
+                      color = 'gray', linetype = 2, method = 'lm',
+                      formula = 'y~x')
+  }
+  
+  g1 +
     geom_point(data = obs, aes(y = .data[[y]])) +
     geom_ribbon(data = proj2, aes(ymin = .data[[y_low]], 
                                   ymax = .data[[y_hi]], fill = RCP),
@@ -67,13 +74,14 @@ create_timeseries_fig <- function(obs, proj1, proj2, y, y_med, y_low, y_hi) {
 #' fit line throught the observed data)
 #'
 #' @examples
-create_timeseries_fig2 = function(obs, proj, y, y_med, y_low, y_hi) {
+create_timeseries_fig2 = function(obs, proj, y, y_med, y_low, y_hi,
+                                  model = TRUE) {
   proj2 <- create_timeseries_df(proj = proj, obs = obs,
                                 y = y, y_med = y_med, y_low = y_low,
-                                y_hi = y_hi)
+                                y_hi = y_hi, model = model)
   
   create_timeseries_fig(obs = obs, proj1 = proj, proj2 = proj2, 
                         y = y, y_med = y_med, y_low = y_low,
-                        y_hi = y_hi)
+                        y_hi = y_hi, model = model)
 }
 
