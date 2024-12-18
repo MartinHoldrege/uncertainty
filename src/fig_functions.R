@@ -28,16 +28,20 @@ fill_color_rcp = function() {
 # timeseries figs ---------------------------------------------------------
 
 
-base_timeseries <- function() {
+base_timeseries <- function(legend.position = 'none') {
   list(
     fill_color_rcp(),
     labs(x = 'Year'),
-    theme(legend.position = 'none')
+    theme(legend.position = legend.position)
   )
 }
 
-create_timeseries_fig <- function(obs, proj1, proj2, y, y_med, y_low, y_hi,
-                                  model = TRUE) {
+create_timeseries_fig <- function(obs, proj1, proj2, y, y_med, y_low = NULL, 
+                                  y_hi = NULL,
+                                  line_var = NULL,
+                                  model = TRUE,
+                                  ribbon = TRUE,
+                                  legend.position = 'none') {
   
   g1 <-  ggplot(mapping = aes(x = year)) +
     geom_vline(xintercept = max(obs$year), color = 'gray') +
@@ -49,15 +53,29 @@ create_timeseries_fig <- function(obs, proj1, proj2, y, y_med, y_low, y_hi,
                       formula = 'y~x')
   }
   
-  g1 +
-    geom_point(data = obs, aes(y = .data[[y]])) +
-    geom_ribbon(data = proj2, aes(ymin = .data[[y_low]], 
+  if(ribbon) {
+    g1 <- g1 +
+      geom_ribbon(data = proj2, aes(ymin = .data[[y_low]], 
                                   ymax = .data[[y_hi]], fill = RCP),
-                alpha = 0.2) +
+                alpha = 0.2)
+  }
+  
+  g1 <- g1 +
     geom_point(data = proj1, aes(y = .data[[y_med]], color = RCP)) +
-    geom_line(data = proj2, aes(y = .data[[y_med]], color = RCP)) +
-    base_timeseries()
+    geom_point(data = obs, aes(y = .data[[y]])) + 
+    base_timeseries(legend.position = legend.position)
+  
+  if(is.null(line_var)) {
+    g1 <- g1 + geom_line(data = proj2, aes(y = .data[[y_med]], color = RCP))
+  } else {
+    g1 <- g1 + geom_line(data = proj2, aes(y = .data[[y_med]], color = RCP,
+                                           linetype = .data[[line_var]]))
+  }
+  
+  g1
 } 
+
+
 
 #' timeseries figure
 #'

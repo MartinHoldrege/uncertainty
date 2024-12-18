@@ -39,7 +39,9 @@ create_timeseries_df <- function(proj, obs, y, y_med, y_low, y_hi,
   
   stopifnot(length(yhat) == 1)
   
-  rows <- distinct(proj[c('RCP')])
+  col_names <- c('RCP', 'class', 'run', 'run_name') # possible grouping columns
+  col_names <- col_names[col_names%in% names(proj)] # only include those actually present
+  rows <- distinct(proj[col_names])
   rows$year <- max(obs$year)
   rows[[y_med]] <- yhat
   rows[[y_low]] <- yhat
