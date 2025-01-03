@@ -159,7 +159,8 @@ for(comp in names(runcomps)) {
     g2 <- g1 + 
       scale_linetype(name = 'Modeling assumption') +
       labs(y = lookup_ylab[class]) +
-      expand_limits(y = ylims[[class]]$med_only)
+      expand_limits(y = ylims[[class]]$full, # previously used ylim[[class]]$med_only
+                    x = xlim1)
       theme(
         legend.title = element_text(size = rel(0.7)),     # Legend title size
         legend.text = element_text(size = rel(0.7)),      # Legend text size
