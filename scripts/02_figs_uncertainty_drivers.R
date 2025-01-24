@@ -169,9 +169,9 @@ for(comp in names(runcomps)) {
         legend.spacing.x = unit(0.2, "cm")                # Horizontal spacing
       )
 
-    png2(paste0('figures/timeseries/scd/compare_assumptions/', class, '_area_SEI', scd_version
-                ,'_', comp, '_', v, '.png'),
-         width = 4.5)
+    png2(paste0('figures/timeseries/scd/compare_assumptions/', class, '_area_SEI', 
+                scd_version,'_', comp, '_', v, '.png'),
+         width = 6.5)
     print(g2)
     dev.off()
 
@@ -194,7 +194,7 @@ g <- create_timeseries_fig2(obs = rr_obs, proj = rr_proj1,
                         y_hi = 'Tmean_hi')
 g2 <- g+
   coord_cartesian(xlim = xlim1) +
-  labs(y = 'Mean Temperature') 
+  labs(y = 'Mean Temperature (\u00B0C)') 
 
 png2(paste0('figures/timeseries/climate/tmean_', v, '.png'))
 g2
