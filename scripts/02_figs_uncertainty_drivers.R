@@ -171,7 +171,7 @@ for(comp in names(runcomps)) {
 
     png2(paste0('figures/timeseries/scd/compare_assumptions/', class, '_area_SEI', 
                 scd_version,'_', comp, '_', v, '.png'),
-         width = 6.5)
+         width = 5.3)
     print(g2)
     dev.off()
 
