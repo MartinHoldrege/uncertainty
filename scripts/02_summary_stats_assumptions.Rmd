@@ -1,0 +1,61 @@
+---
+title: "Summary stats of assumptions"
+author: "Martin Holdrege"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Potentially expand this code in the future, but for now calculating
+numbers to be used in the SRM 2025 talk.
+
+## Read in data
+
+```{r, message=FALSE}
+library(tidyverse)
+```
+
+
+```{r}
+scd1 <- read_csv('data_processed/SEI_area-by-class_2001-2100.csv',
+                 show_col_types = FALSE)
+```
+
+## calculate summaries
+
+
+```{r}
+# amount of core in 2020 (from doherty)
+csa_2020 <- scd1 %>% 
+  filter(year == 2020, scd_version == 'v1',
+         class == 'CSA') %>% 
+  pull(area)
+
+run_lookup <- c("fire1_eind1_c4grass0_co20_2311" = 'NoC4Exp',
+                "fire1_eind1_c4grass1_co20_2311" = 'Default')
+scd_change <- scd1 %>% 
+  filter(years == "2071-2100", class == 'CSA',
+         run %in% names(run_lookup)) %>% 
+  mutate(area_change = area_med - csa_2020,
+         perc_change = round(area_change/csa_2020*100, 2),
+         run = run_lookup[run]) %>% 
+    select(-year, -scd_version, -class, -area, -area_hi, -area_lo) 
+
+scd_change %>% 
+  knitr::kable(caption = 'change in CSA area relative to 2020')
+
+scd_change %>% 
+  pivot_wider(id_cols = c('years', 'RCP'),
+              values_from = 'area_change',
+              names_from = 'run') %>% 
+  mutate(
+    expand_c4_diff = Default - `NoC4Exp`,
+    expand_c4_perc_diff = expand_c4_diff/`NoC4Exp`*100) %>% 
+  knitr::kable(caption = 'How much loss of core decreases when allow (enable, facilitate?) C4 grasses to expand')
+
+
+```
+
