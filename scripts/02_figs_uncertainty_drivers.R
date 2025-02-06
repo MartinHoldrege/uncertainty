@@ -93,6 +93,7 @@ for(i in 1:nrow(p)) {
            class == !!class,
            run == !!run)
   
+  # both RCPs
   g <- create_timeseries_fig2(obs = obs, proj = proj,
                               y = 'area', y_med = 'area_med', y_low = 'area_lo', 
                               y_hi = 'area_hi',
@@ -144,6 +145,22 @@ for(comp in names(runcomps)) {
     proj2$run_name <- factor(proj2$run_name) %>% 
       fct_relevel("Default") # so default always comes first
     
+    base_compare <- function() {
+      list(
+        scale_linetype(name = 'Modeling assumption'),
+        labs(y = lookup_ylab[class]),
+        expand_limits(y = ylims[[class]]$full, # previously used ylim[[class]]$med_only
+                      x = xlim1),
+        theme(
+          legend.title = element_text(size = rel(0.7)),     # Legend title size
+          legend.text = element_text(size = rel(0.7)),      # Legend text size
+          legend.key.size = unit(0.5, "lines"),             # Legend key size
+          legend.spacing.y = unit(0.2, "cm"),               # Vertical spacing
+          legend.spacing.x = unit(0.2, "cm")                # Horizontal spacing
+        ) 
+      )
+    }
+    
     # the warning 'No shared levels found between...' seems to be benign
     g1 <- create_timeseries_fig(obs = obs,
                           proj1 = proj1,
@@ -156,25 +173,37 @@ for(comp in names(runcomps)) {
                           legend.position = 'right')
 
 
-    g2 <- g1 + 
-      scale_linetype(name = 'Modeling assumption') +
-      labs(y = lookup_ylab[class]) +
-      expand_limits(y = ylims[[class]]$full, # previously used ylim[[class]]$med_only
-                    x = xlim1)
-      theme(
-        legend.title = element_text(size = rel(0.7)),     # Legend title size
-        legend.text = element_text(size = rel(0.7)),      # Legend text size
-        legend.key.size = unit(0.5, "lines"),             # Legend key size
-        legend.spacing.y = unit(0.2, "cm"),               # Vertical spacing
-        legend.spacing.x = unit(0.2, "cm")                # Horizontal spacing
-      )
-
+    g2 <- g1 +
+      base_compare()
+    
     png2(paste0('figures/timeseries/scd/compare_assumptions/', class, '_area_SEI', 
                 scd_version,'_', comp, '_', v, '.png'),
-         width = 5.3)
+         width = 4.9)
     print(g2)
     dev.off()
-
+    
+    # just RCP45
+    rcp <- 'RCP45'
+    
+    g1 <- create_timeseries_fig(obs = obs,
+                                proj1 = proj1[proj1$RCP == rcp, ],
+                                proj2 = proj2[proj2$RCP == rcp, ],
+                                y = 'area',
+                                y_med = 'area_med',
+                                line_var = 'run_name',
+                                model = FALSE,
+                                ribbon = FALSE,
+                                legend.position = 'right')
+    
+    
+    g2 <- g1 +
+      base_compare()
+    
+    png2(paste0('figures/timeseries/scd/compare_assumptions/', class, '_area_SEI', 
+                scd_version,'_', comp, '_',rcp, '_', v, '.png'),
+         width = 4.9)
+    print(g2)
+    dev.off()
   }
 
 }
